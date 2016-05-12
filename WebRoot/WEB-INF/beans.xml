@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="
+http://www.springframework.org/schema/beans 
+http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+http://www.springframework.org/schema/tx
+http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+http://www.springframework.org/schema/aop 
+http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+  http://www.springframework.org/schema/context   
+   http://www.springframework.org/schema/context/spring-context-3.0.xsd
+">
+	<!-- 这个是Spring的配置文件,他扫描的是,service,dao -->
+	<context:component-scan base-package="edu.hubu">
+		<context:exclude-filter type="annotation"
+			expression="org.springframework.stereotype.Controller" />
+			<context:exclude-filter type="annotation"
+			expression="org.springframework.web.bind.annotation.ControllerAdvice" />
+	</context:component-scan>
+
+	<!-- 支持aop注解 -->
+	<aop:aspectj-autoproxy />
+
+	<!-- SAE -->
+	<!-- driverClassName:com.mysql.jdbc.Driver -->
+	<!-- url:jdbc:mysql://r.rdc.sae.sina.com.cn:3307/app_yiyu001 -->
+	<!-- username:2lyk5ww31x -->
+	<!-- password:zm5ii10lhw02i0w14l42l5z24zm55yw5wk0ji0jm -->
+
+	<!-- mysql连接 -->
+	<!-- driverClassName:com.mysql.jdbc.Driver -->
+	<!-- url:jdbc:mysql://localhost:3306/test -->
+	<!-- username:root;password:a353753928 -->
+
+	<!-- sqlserver连接 -->
+	<!-- driverClassName>>net.sourceforge.jtds.jdbc.Driver -->
+	<!-- url>>jdbc:jtds:sqlserver://localhost:1433/hubuyiyu -->
+	<!-- username>sa;password:a353753928 -->
+	<!-- <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"> 
+		<property name="driverClassName" value="com.mysql.jdbc.Driver"> </property> 
+		<property name="url" value="jdbc:mysql://r.rdc.sae.sina.com.cn:3307/app_yiyu001"></property> 
+		<property name="username" value="2lyk5ww31x"></property> <property name="password" 
+		value="zm5ii10lhw02i0w14l42l5z24zm55yw5wk0ji0jm"></property> </bean> -->
+	<!-- 导入资源文件 -->
+	<context:property-placeholder location="/WEB-INF/database.properties" />
+	<!-- 本地mysql连接 -->
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+		<property name="driverClassName" value="${jdbc.driver}">
+		</property>
+		<property name="url" value="${jdbc.url}"></property>
+		<property name="username" value="${jdbc.username}"></property>
+		<property name="password" value="${jdbc.password}"></property>
+
+	</bean>
+	<!-- 配置hibernate的SessionFactory实例:通过 Spring 提供的 LocalSessionFactoryBean 
+		进行配置 -->
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<!-- 配置数据源属性 -->
+		<property name="dataSource">
+			<ref bean="dataSource" />
+		</property>
+		<!-- 配置hibernate的相关属性 -->
+		<property name="hibernateProperties">
+			<props>
+				<!-- key的名字前面都要加hibernate. -->
+				<!-- sql server 的方言为org.hibernate.dialect.SQLServerDialect -->
+				<!-- mysql的方言为:org.hibernate.dialect.MySQL5InnoDBDialect -->
+				<prop key="hibernate.dialect">
+					${hibernate.dialect}
+				</prop>
+				<prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
+				<prop key="hibernate.format_sql">${hibernate.format_sql}</prop>
+				<!-- 生成表的策略>>自动生成数据表 -->
+				<prop key="hibernate.hbm2ddl.auto">${hibernate.hbm2ddl.auto}</prop>
+			</props>
+		</property>
+		<!-- 配置hibernate的实体类映射 -->
+		<property name="packagesToScan">
+			<value>edu.hubu.entities</value>
+		</property>
+	</bean>
+	
+	<bean id="hibernateTemplate" class="org.springframework.orm.hibernate3.HibernateTemplate">
+    <property name="sessionFactory" ref="sessionFactory"></property>
+    </bean>
+	
+
+	
+	<!-- 配置Spring的声明式事务 -->
+	<!-- 1.配置事务管理器 --><!-- 用来对hibernate的session执行进行提交 -->
+	<bean id="txManager"
+		class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+	<tx:annotation-driven transaction-manager="txManager" />
+	<!-- 配置事物切点,并把切点和事务属性管理起来 -->
+	<aop:config>
+		<aop:pointcut expression="execution(public * edu.hubu.dao.*.*(..))"
+			id="businessService" />
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="businessService" />
+	</aop:config>
+	<!-- 配置事务属性 -->
+	<tx:advice id="txAdvice" transaction-manager="txManager">
+		<tx:attributes>
+			<tx:method name="find*" read-only="true" propagation="NOT_SUPPORTED" />
+			<!-- get开头的方法不需要在事务中运行 。 有些情况是没有必要使用事务的，比如获取数据。开启事务本身对性能是有一定的影响的 -->
+			<tx:method name="*" />
+			<!-- 其他方法在实务中运行 -->
+		</tx:attributes>
+	</tx:advice>
+	
+
+</beans>
